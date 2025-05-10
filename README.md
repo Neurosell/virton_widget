@@ -1,4 +1,6 @@
 # Virton AI Widget Documentation
+<img src="https://virton.tech/ograph_en.jpg" alt="Virton AI - Virtual Fitting Room Widget" style="width: 100%" /><br/>
+
 <p align="center">Welcome to the <b>Virton AI Widget for Online Stores</b> - free virtual fitting room for your website. Install at any online store website or web-apps by few clicks. Our fitting room updates every week and can be used as Telegram Web App or VK Mini App.</p>
 
 <hr/>
