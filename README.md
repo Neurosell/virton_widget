@@ -1,4 +1,6 @@
 # Virton AI Widget Documentation
+<img src="https://virton.tech/ograph_en.jpg" alt="Virton AI - Virtual Fitting Room Widget" style="width: 100%" /><br/>
+
 <p align="center">Welcome to the <b>Virton AI Widget for Online Stores</b> - free virtual fitting room for your website. Install at any online store website or web-apps by few clicks. Our fitting room updates every week and can be used as Telegram Web App or VK Mini App.</p>
 
 <hr/>
@@ -65,6 +67,9 @@ const VClient = new VirtonWidget({
 | lang | string   | Current Widget Language. Currenlty can be **ru** or **en**   |
 | showWidgetButton | bool   | Show or hide default widget button at strat   |
 | widgetPosition | string   | Current widget and button position. Can be **right** or **left**   |
+| useTimedCTA | bool | Show / Hide Call-To-Action for widget by Time |
+| timedCTATimeout | number | Time to show Call-To-Action for widget (in ms) |
+| useCloseCTA | bool | Use Call-To-Action modal when user trying to close window | 
 
 If you need to show your own widget button, or you want to directly show a try-on window for specific items from your site without showing the catalog, check out the instructions below.
 
