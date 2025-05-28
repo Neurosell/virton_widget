@@ -263,6 +263,7 @@ class VirtonWidget {
                 display: flex;
                 flex-direction: column;
                 flex-wrap: nowrap;
+                color: #191919;
 
                 font-family: "Sansation", sans-serif;
                 font-weight: 500;
@@ -274,6 +275,7 @@ class VirtonWidget {
                 padding: 6px;
                 border: 2px solid #191919;
                 background: transparent;
+                color: #191919;
 
                 font-family: "Sansation", sans-serif;
                 font-weight: 700;
