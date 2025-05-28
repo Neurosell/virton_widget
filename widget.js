@@ -298,6 +298,11 @@ class VirtonWidget {
                 width: 300px;
                 border-radius: 15px;
                 cursor: pointer;
+                color: #191919;
+
+                font-family: "Sansation", sans-serif;
+                font-weight: 500;
+                font-style: normal;
 
                 -webkit-box-shadow: 0px -16px 33px -6px rgba(34, 60, 80, 0.2);
                 -moz-box-shadow: 0px -16px 33px -6px rgba(34, 60, 80, 0.2);
