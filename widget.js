@@ -46,6 +46,7 @@ class VirtonWidget {
         this.widgetButton = null;
         this.isShown = false;
         this.isShownCloseCTA = false;
+        this.currentURL = null;
 
         // Add Event Handlers
         this.OnInitialized = function() {
@@ -109,7 +110,7 @@ class VirtonWidget {
                 max-height: 640px;
                 border-top-left-radius: 20px;
                 border-top-right-radius: 20px;
-                z-index: 9999;
+                z-index: 99999999;
                 ${widgetPositionStyles}
                 overflow: hidden;
 
@@ -145,7 +146,7 @@ class VirtonWidget {
                 height: 80px;
                 border-radius: 250px;
                 border: none;
-                z-index: 9998;
+                z-index: 99999998;
 
                 overflow: hidden;
                 display: flex;
@@ -331,6 +332,10 @@ class VirtonWidget {
                     font-size: 14px;
                 }
             }
+
+            .virton_inline_hidden{
+                display: none !important;
+            }
             
             .virton_timed_cta.closed {
                 width: 0;
@@ -420,6 +425,16 @@ class VirtonWidget {
             self.BindEvents();
             self.OnInitialized();
             self.BindEventedActions();
+            window.navigation.addEventListener("navigate", (event) => {
+                self.DisablePlatformButtons();
+                setTimeout(function(){
+                    self.BindURLChecker();
+                }, 500);
+            });
+            setTimeout(function(){
+                self.DisablePlatformButtons();
+                self.BindURLChecker();
+            }, 500);
         }
 
         if(document.readyState === "complete") {
@@ -480,7 +495,10 @@ class VirtonWidget {
             setTimeout(function(){
                 let finalUrl = new URL(data?.url);
                 finalUrl.searchParams.append("utm_source", "virton_widget");
-                finalUrl.searchParams.append("utm_content", "store_"+self.StoreID);
+                if(self.StoreID == "all")
+                    finalUrl.searchParams.append("utm_content", "general_shopping");
+                else
+                    finalUrl.searchParams.append("utm_content", "store_"+self.StoreID);
                 finalUrl.searchParams.append("utm_term", "widget");
                 finalUrl.searchParams.append("utm_campaign", "virton");
                 window.open(finalUrl.toString());
@@ -492,7 +510,10 @@ class VirtonWidget {
             setTimeout(function(){
                 let finalUrl = new URL(data?.url);
                 finalUrl.searchParams.append("utm_source", "virton");
-                finalUrl.searchParams.append("utm_content", "store_"+self.StoreID);
+                if(self.StoreID == "all")
+                    finalUrl.searchParams.append("utm_content", "general_shopping");
+                else
+                    finalUrl.searchParams.append("utm_content", "store_"+self.StoreID);
                 finalUrl.searchParams.append("utm_term", "widget");
                 finalUrl.searchParams.append("utm_campaign", "virton_widget");
                 document.location.href = finalUrl.toString();
@@ -572,6 +593,34 @@ class VirtonWidget {
         }
     }
 
+    /* Bind URL Checker */
+    BindURLChecker(){
+        let self = this;
+        let currentUrl = window.location.href;
+        console.log("Virton AI Current Store URL: " + currentUrl);
+
+        let checkingGateway = `${self.baseURL}${self.options.lang}/check_item/?item_url=${currentUrl}&storeId=${self.options.storeID}`;
+        fetch(checkingGateway, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        }).then(function(response){
+            return response.json();
+        }).then(function(data){
+            console.log(data);
+            if(data?.success){
+                let item = data?.data;
+                if(!item) return;
+                let formatURL = `${self.baseURL}${self.options.lang}/widget/${self.options.storeID}/#/start/?tab=confirm_garment&garment_type=${item?.garmentType}&garment_url=${item?.itemData?.photo}&item_id=${item?.id}&purchase_url=${item?.itemData?.link}&store_id=${self.options.storeID}&data-purchase-url=${item?.itemData?.link}`;
+                self.currentURL = formatURL;
+                self.widgetFrame.src = formatURL;
+                self.ProcessPlatformSpecific();
+                console.log("Virton AI Item Found");
+            }
+        });
+    }
+
     // Subscribe to Event
     SubscribeToEvent(eventName, eventHandler){
         const eventMethod = window.addEventListener ? "addEventListener" : "attachEvent";
@@ -586,7 +635,7 @@ class VirtonWidget {
                     eventHandler(parsedData.eventData);
                 }
             }catch(ex){
-                console.error("Unknown Event Received: ", messageData);
+                //console.error("Unknown Event Received: ", messageData);
             }
         });
     }
@@ -595,11 +644,14 @@ class VirtonWidget {
     ShowCallToActionTimed(){
         let self = this;
         if(self.isShown) return;
+        let hasShownTimed = localStorage.getItem("hasShownTimed");
+        if(hasShownTimed && hasShownTimed == "yes") return;
         self.timedCTAContainer.classList.toggle("closed", false);
 
         // Bind Events
         setTimeout(function(){
             self.timedCTAContainer.classList.toggle("closed", true);
+            localStorage.setItem("hasShownTimed", "yes");
         }, 5000);
     }
 
@@ -613,4 +665,148 @@ class VirtonWidget {
         self.isShownCloseCTA = true;
         localStorage.setItem("hasShownFitting", "yes");
     }
+
+    // #region Platform-Specific Processors
+    // Disable Platform Buttons
+    DisablePlatformButtons(){
+        let self = this;
+        let platform = self.DetectCurrentStorePlatform();
+        if(platform == "shopify") self.DisableShopifyElements();
+        else if(platform == "tilda") self.DisableTildaElements();
+    }
+
+    // Process Platform-Specific Elements
+    ProcessPlatformSpecific(){
+        let self = this;
+        let platform = self.DetectCurrentStorePlatform();
+        if(platform == "shopify") self.InsertShopifyElements();
+        else if(platform == "tilda") self.InsertTildaElements();
+
+        if(!platform && window.innerWidth > 600){
+            setTimeout(function(){
+                self.widgetFrame.src = self.currentURL;
+                if(!self.isShown) self.ShowWidget(true);
+            }, 1500);
+        }
+    }
+
+    // Detect Current Store Platform
+    DetectCurrentStorePlatform(){
+        let self = this;
+        let platform = null;
+        if(document.querySelectorAll('.shopify-section').length > 0) platform = "shopify";
+        else if(document.querySelectorAll('.t-store__product-popup').length > 0) platform = "tilda";
+        return platform;
+    }
+
+    // Get Try On Label
+    GetTryOnLabel(){
+        let self = this;
+        let tryOnLabel = (self.options.lang == "ru") ? "Примерить онлайн 👕" : "Try it on via AI 👕";
+        return tryOnLabel;
+    }
+
+    // Disable Shopify Elements
+    DisableShopifyElements(){
+        let self = this;
+        let shopForm = document.querySelector(".shopify-product-form");
+        if(!shopForm) return;
+        let findTryOn = shopForm.querySelector(".virton_inline");
+        if(findTryOn){
+            findTryOn.classList.toggle("virton_inline_hidden", true);
+        }
+    }
+
+    // Insert Shopify Elements
+    InsertShopifyElements(){
+        let self = this;
+        
+        function tryItOn(event){
+            event?.preventDefault();
+            self.widgetFrame.src = self.currentURL;
+            self.ShowWidget(true);
+            return false;
+        }
+
+        // Find Insert Container
+        let shopForm = document.querySelector(".shopify-product-form");
+        if(!shopForm) return;
+        let addCartButton = shopForm.querySelector("button[type=\"submit\"]");
+        if(!addCartButton) return;
+        let findTryOn = shopForm.querySelector(".virton_inline");
+        if(findTryOn){
+            findTryOn.removeEventListener("click", tryItOn)
+            findTryOn.addEventListener("click", tryItOn);
+            findTryOn.classList.toggle("virton_inline_hidden", false);
+            return;
+        }
+        let tryOnButton = addCartButton.cloneNode(true);
+        tryOnButton.style.marginBottom = "10px";
+        tryOnButton.style.marginTop = "10px";
+        tryOnButton.type = "button";
+        tryOnButton.classList.toggle("virton_inline", true);
+        tryOnButton.innerHTML = self.GetTryOnLabel();
+        tryOnButton.addEventListener("click", tryItOn);
+        shopForm.prepend(tryOnButton);
+
+        // Setup Auto-Opening
+        if(!self.isShown && window.innerWidth > 600){
+            setTimeout(function(){
+                self.widgetFrame.src = self.currentURL;
+                self.ShowWidget(true);
+            }, 5000);
+        }
+    }
+
+    // Disable Tilda Elements
+    DisableTildaElements(){
+        let self = this;
+        let shopForm = document.querySelector(".t-store__prod-popup__btn-wrapper");
+        if(!shopForm) return;
+        let findTryOn = shopForm.querySelector(".virton_inline");
+        if(findTryOn){
+            findTryOn.classList.toggle("virton_inline_hidden", true);
+        }
+    }
+
+    // Insert Tilda Elements
+    InsertTildaElements(){
+        let self = this;
+
+        function tryItOn(event){
+            event?.preventDefault();
+            self.widgetFrame.src = self.currentURL;
+            self.ShowWidget(true);
+            return false;
+        }
+
+        // Find and Insert Button
+        let shopForm = document.querySelector(".t-store__prod-popup__btn-wrapper");
+        if(!shopForm) return;
+        let addCartButton = shopForm.querySelector("a[href=\"#order\"]");
+        if(!addCartButton) return;
+        let findTryOn = shopForm.querySelector(".virton_inline");
+        if(findTryOn){
+            findTryOn.removeEventListener("click", tryItOn)
+            findTryOn.addEventListener("click", tryItOn);
+            findTryOn.classList.toggle("virton_inline_hidden", false);
+            return;
+        }
+        let tryOnButton = addCartButton.cloneNode(true);
+        tryOnButton.href = "";
+        tryOnButton.style.marginRight = "5px";
+        tryOnButton.classList.toggle("virton_inline", true);
+        tryOnButton.innerHTML = `<table style="width:100%; height:100%;"><tbody><tr><td class="js-store-prod-popup-buy-btn-txt">${self.GetTryOnLabel()}</td></tr></tbody></table>`;
+        tryOnButton.addEventListener("click", tryItOn);
+        shopForm.prepend(tryOnButton);
+
+        // Setup Auto-Opening
+        if(!self.isShown && window.innerWidth > 600){
+            setTimeout(function(){
+                self.widgetFrame.src = self.currentURL;
+                self.ShowWidget(true);
+            }, 5000);
+        }
+    }
+    // #endregion
 }
